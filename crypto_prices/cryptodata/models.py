@@ -10,6 +10,19 @@ class Currency(models.Model):
         return self.name
 
 
+class CurrencyExchangePK(models.Model):
+    KEY_TYPE_CHOICES = (
+        ('STR', 'string'),
+        ('INT', 'integer'),
+    )
+
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
+    exchange = models.ForeignKey('Exchange', on_delete=models.CASCADE)
+    key = models.CharField(max_length=63)
+    key_type = models.CharField(
+        max_length=3, choices=KEY_TYPE_CHOICES, default='STR')
+
+
 class TickerSymbol(models.Model):
     symbol = models.CharField(max_length=8)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
