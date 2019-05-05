@@ -4,6 +4,7 @@ from django.db import models
 class Currency(models.Model):
     name = models.CharField(max_length=255)
     exchanges = models.ManyToManyField('Exchange')
+    type_is_crypto = models.BooleanField()
 
 
 class TickerSymbol(models.Model):
