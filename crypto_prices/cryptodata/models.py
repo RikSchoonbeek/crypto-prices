@@ -2,7 +2,7 @@ from django.db import models
 
 
 class CryptoCurrency(models.Model):
-    name = models.CharField()
+    name = models.CharField(max_length=255)
     exchanges = models.ManyToManyField('Exchange')
 
 
@@ -12,4 +12,4 @@ class TickerSymbol(models.Model):
 
 
 class Exchange(models.Model):
-    name = models.CharField()
+    name = models.CharField(max_length=255)
