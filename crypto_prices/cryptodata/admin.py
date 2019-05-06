@@ -1,10 +1,15 @@
 from django.contrib import admin
 
-from .models import Currency, Exchange, TickerSymbol
+from .models import Currency, CurrencyExchangePK, Exchange, TickerSymbol
 
 
 @admin.register(Currency)
 class CurrencyAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(CurrencyExchangePK)
+class CurrencyExchangePKAdmin(admin.ModelAdmin):
     pass
 
 
