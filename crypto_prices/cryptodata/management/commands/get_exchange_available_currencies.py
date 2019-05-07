@@ -34,29 +34,67 @@ class Command(BaseCommand):
         """
         Method responsible for adding the data of all currencies
         available on specific exchange to the database.
+
+        BINANCE SPECIFIC INFO:
+        As you will see in the code below, Binance data is handled
+        somewhat differently.
+
+        Binance doesn't seem to have an api endpoint which serves
+        data for all it's individual assets. So instead I will get
+        the data from Binance's trading pairs.
+
+        Because each pair_data contains data for two different assets,
+        which does not apply to Bittrex and Kraken, I need to split up
+        the data for each asset, and than handle it.
         """
         exchange_name = exchange_instance.name
         all_currencies_data = self.return_available_currency_data(
             exchange_name)
         for currency_data in all_currencies_data:
+            if exchange_name == 'Binance':
+                # For binance, one instance of currency_data will
+                # cointain two different currencies to add.
+                # so, I will need to handle them both.
+
+                # 1) Split currency_data into two formatted_currency_data
+                # versions -> put them in list together.
+                formatted_and_split_data = self.return_binance_formatted_data(
+                    currency_data)
+                # 2) call self.add_currency on each (use for loop)
+                for binance_currency_data in formatted_and_split_data:
+                    self.add_currency(all_currencies_data,
+                                      binance_currency_data, exchange_instance, exchange_name)
+            else:
+                self.add_currency(all_currencies_data,
+                                  currency_data, exchange_instance, exchange_name)
+
+    def split_binance_currency_data(self, currency_data):
+        """
+
+        """
+
+    def add_currency(self, all_currencies_data, currency_data, exchange_instance, exchange_name):
+        if exchange_name == 'Binance':
+            formatted_crrncy_data = currency_data
+        else:
             formatted_crrncy_data = self.return_formatted_currency_data(
                 all_currencies_data, currency_data, exchange_name)
 
-            currency_name = formatted_crrncy_data['currency_name']
-            currency_instance = self.add_update_currency_to_db(
-                currency_name, exchange_instance
-            )
+        currency_name = formatted_crrncy_data['currency_name']
+        currency_instance = self.add_update_currency_to_db(
+            currency_name, exchange_instance
+        )
 
-            currency_exchange_pk = formatted_crrncy_data['currency_exchange_pk']
-            self.add_update_currency_exchange_pk_to_db(
-                currency_instance,
-                exchange_instance,
-                currency_exchange_pk
-            )
+        currency_exchange_pk = formatted_crrncy_data['currency_exchange_pk']
+        self.add_update_currency_exchange_pk_to_db(
+            currency_instance,
+            exchange_instance,
+            currency_exchange_pk
+        )
 
-            ticker_symbol = formatted_crrncy_data['ticker_symbol']
-            self.add_update_ticker_symbol_to_db(
-                currency_name, currency_instance, ticker_symbol)
+        ticker_symbol = formatted_crrncy_data['ticker_symbol']
+        self.add_update_ticker_symbol_to_db(
+            currency_name, currency_instance, ticker_symbol)
 
     def return_formatted_currency_data(self, all_currencies_data, currency_data, exchange_name):
         """
@@ -78,6 +116,23 @@ class Command(BaseCommand):
         if exchange_name == 'Kraken':
             return self.return_kraken_formatted_data(all_currencies_data, currency_data)
 
+    def return_binance_formatted_data(self, currency_data):
+        exchange_name = 'Binance'
+        currency_exchange_pk_base = ticker_symbol_base = currency_data['baseAsset']
+        currency_exchange_pk_quote = ticker_symbol_quote = currency_data['quoteAsset']
+        return[
+            {
+                'currency_exchange_pk': currency_exchange_pk_base,
+                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_base),
+                'ticker_symbol': ticker_symbol_base,
+            },
+            {
+                'currency_exchange_pk': currency_exchange_pk_quote,
+                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_quote),
+                'ticker_symbol': ticker_symbol_quote,
+            }
+        ]
+
     def return_bittrex_formatted_data(self, currency_data):
         return {
             'currency_exchange_pk': currency_data['Currency'],
@@ -97,10 +152,17 @@ class Command(BaseCommand):
         url = self.get_exchange_url(exchange_name)
         response = requests.get(url)
         data = json.loads(response.text)
-        currency_data = data['result']
+
+        if exchange_name == 'Binance':
+            currency_data = data['symbols']
+        elif exchange_name == 'Bittrex' or 'Kraken':
+            currency_data = data['result']
+
         return currency_data
 
     def get_exchange_url(self, exchange_name):
+        if exchange_name == 'Binance':
+            return 'https://api.binance.com/api/v1/exchangeInfo'
         if exchange_name == 'Bittrex':
             return 'https://api.bittrex.com/api/v1.1/public/getcurrencies'
         if exchange_name == 'Kraken':
@@ -126,7 +188,7 @@ class Command(BaseCommand):
             if name:
                 return name
 
-        return self.get_currency_name_from_user(ticker_symbol)
+        return self.get_currency_name_from_user(exchange_name, ticker_symbol)
 
     def get_kraken_currency_name(self, currency_exchange_pk):
         file_path = os.path.join(
@@ -143,11 +205,11 @@ class Command(BaseCommand):
 
         return None
 
-    def get_currency_name_from_user(self, ticker_symbol):
+    def get_currency_name_from_user(self, exchange_name, ticker_symbol):
 
         while True:
             user_input = input(f"""\n
-            The current exchange doesn't provide a name for the currency
+            {exchange_name} doesn't provide a name for the currency
             with the following ticker symbol:
 
             {ticker_symbol}
