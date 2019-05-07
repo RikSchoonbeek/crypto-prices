@@ -1,4 +1,6 @@
+import csv
 import json
+import os
 
 import requests
 
@@ -10,14 +12,9 @@ from cryptodata.models import Currency, CurrencyExchangePK, Exchange, TickerSymb
 
 class Command(BaseCommand):
     help = """
-    Fetches data from specified exchanges and saves data to database.
-    
-    Data that is fetched:
-    - Available cryptocurrencies
-    - Ticker symbols for each currency
-    - Currency name (if not available, this is retrieved from
-      another source)
-    - Tradable pairs on specific exchange
+    Fetches all available currencies from the exchanges listed in
+    settings.EXCHANGES, and saves them to the database, including the 
+    CurrencyExchangePK and TickerSymbol of each currency.
     """
 
     def handle(self, *args, **options):
@@ -26,115 +23,97 @@ class Command(BaseCommand):
 
     def handle_exchange(self, exchange_name):
         """
-
+        Adds exchange to db, if it doesn't exist already. And adds
+        all of the exchange's available currencies to the db,
+        including the CurrencyExchangePK and TickerSymbol.
         """
-        self.add_exchange_available_currencies_to_db()
+        exchange_instance = self.add_update_exchange_model(exchange_name)
+        self.add_exchange_available_currencies_to_db(exchange_instance)
 
-    def add_exchange_available_currencies_to_db(self):
+    def add_exchange_available_currencies_to_db(self, exchange_instance):
         """
+        Method responsible for adding the data of all currencies
+        available on specific exchange to the database.
         """
-        all_currency_data = self.fetch_available_currency_data(url)
+        exchange_name = exchange_instance.name
+        all_currencies_data = self.return_available_currency_data(
+            exchange_name)
+        for currency_data in all_currencies_data:
+            formatted_crrncy_data = self.return_formatted_currency_data(
+                all_currencies_data, currency_data, exchange_name)
 
-    def direct_to_exchange_specific_handling(self, exchange_name):
-        """
-        Directs the flow of the program based on which exchange is being
-        handled currently.
+            currency_name = formatted_crrncy_data['currency_name']
+            currency_instance = self.add_update_currency_to_db(
+                currency_name, exchange_instance
+            )
 
-        Each exchange has it's own unique api calls and returned data
-        format, and thus, requires it's own way of handling.
-        """
-        if exchange_name is "Kraken":
-            self.add_or_update_kraken_currencies(exchange_name)
+            currency_exchange_pk = formatted_crrncy_data['currency_exchange_pk']
+            self.add_update_currency_exchange_pk_to_db(
+                currency_instance,
+                exchange_instance,
+                currency_exchange_pk
+            )
 
-    def add_or_update_kraken_currencies(self, exchange_name):
-        """
-
-        """
-        kraken_model_instance = self.add_update_exchange_model(exchange_name)
-
-        url = 'https://api.kraken.com/0/public/Assets'
-        all_currency_data = self.fetch_available_currency_data(url)
-
-        for one_currency_data in all_currency_data:
-            # get all needed available data from one_currency_data
-            # and output it in a new format, like so:
-
-            # {
-            #   'currency_exchange_pk': ...,
-            #   'currency_name': ...,
-            #   'ticker_symbol': ...,
-            # }
-
-            # Why? So that I can make this part unique for each exchange,
-            # and make the rest of the code / methods equal for each
-            # exchange, this prevents repetition of code
-
-            formatted_currency_data = self.get_formatted_currency_data(
-                one_currency_data, all_currency_data)
-
-            ticker_symbol = currency_data[currency_exchange_pk]['altname']
-            currency_name = self.get_currency_name(ticker_symbol)
-
-            currency_instance = self.add_update_currency_model(
-                currency_name, kraken_model_instance)
-
-            self.add_update_currency_exchange_pk(
-                currency_instance, kraken_model_instance, currency_exchange_pk)
-
-            self.add_update_ticker_symbol(
+            ticker_symbol = formatted_crrncy_data['ticker_symbol']
+            self.add_update_ticker_symbol_to_db(
                 currency_name, currency_instance, ticker_symbol)
 
-    def get_formatted_currency_data(self, one_currency_data, all_currency_data):
+    def return_formatted_currency_data(self, all_currencies_data, currency_data, exchange_name):
         """
-        """
-        if
+        Takes raw data of one single currency, returns data in
+        specific format (see format below).
 
-    def fetch_available_currency_data(self, exchange_name):
-        url = self.get_exchange_available_currencies_url(exchange_name)
+        This makes further handling of the data more easy/convenient,
+        and helps prevent repeating code.
+
+        Returned format:
+        {
+            'currency_exchange_pk': ...,
+            'currency_name': ...,
+            'ticker_symbol': ...,
+        }
+        """
+        if exchange_name == 'Bittrex':
+            return self.return_bittrex_formatted_data(currency_data)
+        if exchange_name == 'Kraken':
+            return self.return_kraken_formatted_data(all_currencies_data, currency_data)
+
+    def return_bittrex_formatted_data(self, currency_data):
+        return {
+            'currency_exchange_pk': currency_data['Currency'],
+            'currency_name': currency_data['CurrencyLong'],
+            'ticker_symbol': currency_data['Currency'],
+        }
+
+    def return_kraken_formatted_data(self, all_data_dict, currency_data_key):
+        ticker_symbol = all_data_dict[currency_data_key]['altname']
+        return {
+            'currency_exchange_pk': currency_data_key,
+            'currency_name': self.get_currency_name('Kraken', ticker_symbol, currency_data_key),
+            'ticker_symbol': ticker_symbol,
+        }
+
+    def return_available_currency_data(self, exchange_name):
+        url = self.get_exchange_url(exchange_name)
         response = requests.get(url)
         data = json.loads(response.text)
         currency_data = data['result']
         return currency_data
 
-    def get_exchange_available_currencies_url(self, exchange_name):
+    def get_exchange_url(self, exchange_name):
         if exchange_name == 'Bittrex':
             return 'https://api.bittrex.com/api/v1.1/public/getcurrencies'
         if exchange_name == 'Kraken':
             return 'https://api.kraken.com/0/public/Assets'
 
-    def add_update_currency_data_to_db(self, currency_data, exchange_model_instance):
-        """
-        """
-        for currency_exchange_pk in currency_data:
-            ticker_symbol = self.get_ticker_symbol(
-                currency_data, exchange_model_instance)
-            currency_name = self.get_currency_name(ticker_symbol)
-
-            currency_instance = self.add_update_currency_model(
-                currency_name, kraken_model_instance)
-
-            self.add_update_currency_exchange_pk(
-                currency_instance, kraken_model_instance, currency_exchange_pk)
-
-            self.add_update_ticker_symbol(
-                currency_name, currency_instance, ticker_symbol)
-
-    def get_ticker_symbol(self, currency_data, exchange_model_instance, currency_exchange_pk=None):
-        exchange_name = exchange_model_instance.name
-        if exchange_name == 'Bittrex':
-            ticker_symbol = currency_data['Currency']
-        if exchange_name == 'Kraken':
-            ticker_symbol = currency_data[currency_exchange_pk]['altname']
-
-        return ticker_symbol
-
-    def get_currency_name(self, ticker_symbol):
+    def get_currency_name(self, exchange_name, ticker_symbol, currency_exchange_pk=None):
         """
         Returns currency name.
 
         First tries to get it from the DB, based on ticker symbol,
         if not found, tries to get it from the user
         """
+
         ticker_symbol_instance_queryset = TickerSymbol.objects.filter(
             symbol=ticker_symbol)
 
@@ -142,8 +121,27 @@ class Command(BaseCommand):
             ticker_symbol_instance = ticker_symbol_instance_queryset[0]
             currency_name = ticker_symbol_instance.currency.name
             return currency_name
-        else:
-            return self.get_currency_name_from_user(ticker_symbol)
+        if exchange_name == 'Kraken':
+            name = self.get_kraken_currency_name(currency_exchange_pk)
+            if name:
+                return name
+
+        return self.get_currency_name_from_user(ticker_symbol)
+
+    def get_kraken_currency_name(self, currency_exchange_pk):
+        file_path = os.path.join(
+            settings.BASE_DIR, 'cryptodata/management/commands/utils/kraken_asset_code_to_name.csv')
+
+        with open(file_path) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            next(csv_reader)
+            for row in csv_reader:
+                asset_code = row[0]
+                asset_name = row[1]
+                if asset_code == currency_exchange_pk:
+                    return asset_name
+
+        return None
 
     def get_currency_name_from_user(self, ticker_symbol):
 
@@ -163,44 +161,10 @@ class Command(BaseCommand):
             else:
                 print("\nNo input detected, please try again.\n")
 
-    def get_currency_type_from_user(self, currency_name):
+    def add_update_currency_to_db(self, currency_name, exchange_instance):
         """
-        returns True if type is crypto,
-        returns False if type is fiat
+        Adds or updates one currency in db.
         """
-
-        while True:
-            user_input = input(f"""\n
-            Please specify the type of the following currency:
-
-            {currency_name}
-
-            Options:
-            a) crypto currency
-            b) fiat currency
-
-            input a/b > 
-            """).lower()
-
-            if user_input == 'a':
-                return True
-            elif user_input == 'b':
-                return False
-            else:
-                print(f"""
-                Your input was '{user_input}',
-                please enter 'a' or 'b'.\n\n
-                """)
-
-    def add_update_currency_model(self, currency_name, exchange_instance, currency_type=None):
-        """
-        Checks if instance for currency exchange exists, if not it adds it.
-        """
-        # if instance already exists: update (if needed)
-        # if instance doesn't exist: create + add data
-
-        # check if currency is already in db by going through the
-        # currency's ticker symbol
         currency_instance_queryset = Currency.objects.filter(
             name=currency_name)
 
@@ -209,16 +173,13 @@ class Command(BaseCommand):
         else:
             currency_instance = Currency()
             currency_instance.name = currency_name
-            if not currency_type:
-                currency_type = self.get_currency_type_from_user(currency_name)
-            currency_instance.type_is_crypto = currency_type
             currency_instance.save()
 
         currency_instance.exchanges.add(exchange_instance)
 
         return currency_instance
 
-    def add_update_currency_exchange_pk(self, currency_instance, exchange_instance, key):
+    def add_update_currency_exchange_pk_to_db(self, currency_instance, exchange_instance, key):
         currency_exchange_pk_instance_queryset = CurrencyExchangePK.objects.filter(
             key=key)
 
@@ -253,7 +214,7 @@ class Command(BaseCommand):
 
         return instance
 
-    def add_update_ticker_symbol(self, currency_name, currency_instance, ticker_symbol):
+    def add_update_ticker_symbol_to_db(self, currency_name, currency_instance, ticker_symbol):
         ticker_symbol_queryset = TickerSymbol.objects.filter(
             symbol=ticker_symbol)
 
