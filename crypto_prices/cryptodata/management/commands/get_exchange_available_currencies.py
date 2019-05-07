@@ -123,12 +123,12 @@ class Command(BaseCommand):
         return[
             {
                 'currency_exchange_pk': currency_exchange_pk_base,
-                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_base),
+                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_base, currency_exchange_pk_base),
                 'ticker_symbol': ticker_symbol_base,
             },
             {
                 'currency_exchange_pk': currency_exchange_pk_quote,
-                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_quote),
+                'currency_name': self.get_currency_name(exchange_name, ticker_symbol_quote, currency_exchange_pk_quote),
                 'ticker_symbol': ticker_symbol_quote,
             }
         ]
@@ -183,12 +183,28 @@ class Command(BaseCommand):
             ticker_symbol_instance = ticker_symbol_instance_queryset[0]
             currency_name = ticker_symbol_instance.currency.name
             return currency_name
+        if exchange_name == 'Binance':
+            name = self.get_binance_currency_name(currency_exchange_pk)
+            if name:
+                return name
         if exchange_name == 'Kraken':
             name = self.get_kraken_currency_name(currency_exchange_pk)
             if name:
                 return name
 
         return self.get_currency_name_from_user(exchange_name, ticker_symbol)
+
+    def get_binance_currency_name(self, currency_exchange_pk):
+        if currency_exchange_pk == 'BQX':
+            return 'Ethos'
+        if currency_exchange_pk == 'MATIC':
+            return 'Matic Network'
+        if currency_exchange_pk == 'VET':
+            return 'Vechain'
+        if currency_exchange_pk == 'YOYO':
+            return 'YOYOW'
+
+        return None
 
     def get_kraken_currency_name(self, currency_exchange_pk):
         file_path = os.path.join(
