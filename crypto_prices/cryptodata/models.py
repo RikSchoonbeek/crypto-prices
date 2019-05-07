@@ -4,13 +4,12 @@ from django.db import models
 class Currency(models.Model):
     name = models.CharField(max_length=255)
     exchanges = models.ManyToManyField('Exchange')
-    type_is_crypto = models.BooleanField()
 
     def __str__(self):
         return self.name
 
     class Meta:
-        ordering = ['name', 'type_is_crypto']
+        ordering = ['name']
 
 
 class CurrencyExchangePK(models.Model):
