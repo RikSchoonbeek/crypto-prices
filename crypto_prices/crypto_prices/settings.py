@@ -125,7 +125,8 @@ STATIC_URL = '/static/'
 
 # Exchange Data
 EXCHANGES = [
-    "Kraken"
+    "Bittrex",
+    "Kraken",
 ]
 
 # api key for coinapi.io
