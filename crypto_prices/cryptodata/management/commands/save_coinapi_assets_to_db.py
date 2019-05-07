@@ -34,8 +34,6 @@ class Command(BaseCommand):
     def create_currency(self, currency_data):
         instance = Currency()
         instance.name = currency_data['name']
-        is_crypto = True if currency_data['type_is_crypto'] else False
-        instance.type_is_crypto = is_crypto
         instance.save()
         return instance
 
