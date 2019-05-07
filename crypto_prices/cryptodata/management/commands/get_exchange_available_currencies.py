@@ -22,7 +22,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for exchange_name in settings.EXCHANGES:
-            self.direct_to_exchange_specific_handling(exchange_name)
+            self.handle_exchange(exchange_name)
+
+    def handle_exchange(self, exchange_name):
+        """
+
+        """
+        self.add_exchange_available_currencies_to_db()
+
+    def add_exchange_available_currencies_to_db(self):
+        """
+        """
+        all_currency_data = self.fetch_available_currency_data(url)
 
     def direct_to_exchange_specific_handling(self, exchange_name):
         """
@@ -33,35 +44,89 @@ class Command(BaseCommand):
         format, and thus, requires it's own way of handling.
         """
         if exchange_name is "Kraken":
-            self.add_or_update_kraken_data(exchange_name)
+            self.add_or_update_kraken_currencies(exchange_name)
 
-    def add_or_update_kraken_data(self, exchange_name):
+    def add_or_update_kraken_currencies(self, exchange_name):
         """
 
         """
-        # Save exchange to database
         kraken_model_instance = self.add_update_exchange_model(exchange_name)
 
-        # call api: https://api.kraken.com/0/public/Assets
-        response = requests.get('https://api.kraken.com/0/public/Assets')
-        data = json.loads(response.text)
-        currency_data = data['result']
-        # access the response data["result"]
-        # save for each item in results:
-        for currency_exchange_pk in currency_data:
+        url = 'https://api.kraken.com/0/public/Assets'
+        all_currency_data = self.fetch_available_currency_data(url)
+
+        for one_currency_data in all_currency_data:
+            # get all needed available data from one_currency_data
+            # and output it in a new format, like so:
+
+            # {
+            #   'currency_exchange_pk': ...,
+            #   'currency_name': ...,
+            #   'ticker_symbol': ...,
+            # }
+
+            # Why? So that I can make this part unique for each exchange,
+            # and make the rest of the code / methods equal for each
+            # exchange, this prevents repetition of code
+
+            formatted_currency_data = self.get_formatted_currency_data(
+                one_currency_data, all_currency_data)
+
             ticker_symbol = currency_data[currency_exchange_pk]['altname']
             currency_name = self.get_currency_name(ticker_symbol)
-            # - save Currency (first: get currency name)
+
             currency_instance = self.add_update_currency_model(
                 currency_name, kraken_model_instance)
 
-            # - save CurrencyExchangePK
             self.add_update_currency_exchange_pk(
                 currency_instance, kraken_model_instance, currency_exchange_pk)
 
-            # - save TickerSymbol
             self.add_update_ticker_symbol(
                 currency_name, currency_instance, ticker_symbol)
+
+    def get_formatted_currency_data(self, one_currency_data, all_currency_data):
+        """
+        """
+        if
+
+    def fetch_available_currency_data(self, exchange_name):
+        url = self.get_exchange_available_currencies_url(exchange_name)
+        response = requests.get(url)
+        data = json.loads(response.text)
+        currency_data = data['result']
+        return currency_data
+
+    def get_exchange_available_currencies_url(self, exchange_name):
+        if exchange_name == 'Bittrex':
+            return 'https://api.bittrex.com/api/v1.1/public/getcurrencies'
+        if exchange_name == 'Kraken':
+            return 'https://api.kraken.com/0/public/Assets'
+
+    def add_update_currency_data_to_db(self, currency_data, exchange_model_instance):
+        """
+        """
+        for currency_exchange_pk in currency_data:
+            ticker_symbol = self.get_ticker_symbol(
+                currency_data, exchange_model_instance)
+            currency_name = self.get_currency_name(ticker_symbol)
+
+            currency_instance = self.add_update_currency_model(
+                currency_name, kraken_model_instance)
+
+            self.add_update_currency_exchange_pk(
+                currency_instance, kraken_model_instance, currency_exchange_pk)
+
+            self.add_update_ticker_symbol(
+                currency_name, currency_instance, ticker_symbol)
+
+    def get_ticker_symbol(self, currency_data, exchange_model_instance, currency_exchange_pk=None):
+        exchange_name = exchange_model_instance.name
+        if exchange_name == 'Bittrex':
+            ticker_symbol = currency_data['Currency']
+        if exchange_name == 'Kraken':
+            ticker_symbol = currency_data[currency_exchange_pk]['altname']
+
+        return ticker_symbol
 
     def get_currency_name(self, ticker_symbol):
         """
@@ -175,7 +240,7 @@ class Command(BaseCommand):
 
     def add_update_exchange_model(self, exchange_name):
         """
-        Checks if instance for currency exchange exists, if not it adds it.
+        Checks if instance for current exchange exists, if not it adds it.
 
         Returns the instance
         """
