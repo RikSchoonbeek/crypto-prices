@@ -42,6 +42,38 @@ class TickerSymbol(models.Model):
         ordering = ['symbol']
 
 
+class TradingPair(models.Model):
+    currency1 = models.ForeignKey(
+        Currency, on_delete=models.CASCADE, related_name='currency1')
+    currency2 = models.ForeignKey(
+        Currency, on_delete=models.CASCADE, related_name='currency2')
+    exchanges = models.ManyToManyField('Exchange')
+
+    def __str__(self):
+        currency1_name = self.currency1.name
+        currency2_name = self.currency2.name
+        return f"{currency1_name} - {currency2_name}"
+
+
+class TradingPairExchangePK(models.Model):
+    KEY_TYPE_CHOICES = (
+        ('STR', 'string'),
+        ('INT', 'integer'),
+    )
+
+    trading_pair = models.ForeignKey(TradingPair, on_delete=models.CASCADE)
+    exchange = models.ForeignKey('Exchange', on_delete=models.CASCADE)
+    key = models.CharField(max_length=63)
+    key_type = models.CharField(
+        max_length=3, choices=KEY_TYPE_CHOICES, default='STR')
+
+    def __str__(self):
+        return self.key
+
+    class Meta:
+        ordering = ['key']
+
+
 class Exchange(models.Model):
     name = models.CharField(max_length=255)
 
