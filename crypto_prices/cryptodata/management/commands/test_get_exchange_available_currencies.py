@@ -28,9 +28,9 @@ class Command(BaseCommand):
         self.stdout.write(
             f"\n# Test get_exchange_available_currencies management command #\n")
 
-        # self.empty_tables()
-        # self.run_save_coinapi_assets_to_db()
-        # self.run_get_exchange_available_currencies()
+        self.empty_tables()
+        self.run_save_coinapi_assets_to_db()
+        self.run_get_exchange_available_currencies()
 
         self.perform_tests()
 
@@ -123,6 +123,7 @@ class Command(BaseCommand):
             currency_instances)
 
         # Test if this Currency has a TickerSymbol
+        self.test_ticker_symbols()
 
     def test_min_five_currencies_for_each_exchange(self):
         """
@@ -138,20 +139,14 @@ class Command(BaseCommand):
         randomized_indexes = self.return_randomized_indexes()
 
         for index in randomized_indexes:
-            # Get currency at that index
             currency_instance = currency_instances[index]
-            # Loop over currency exchanges, and add count for each
-            # exchange
             exchange_currency_count_dict = self.update_exchange_count(
                 currency_instance, exchange_currency_count_dict)
 
-            # test if an exchange hits 5
             if self.check_all_exchanges_hit_five(exchange_currency_count_dict):
                 break
-            # if all exchanges hit 5: loop can be stopped
 
         self.display_min_five_test_results(exchange_currency_count_dict)
-        # display results
 
     def return_randomized_indexes(self):
         currency_instances = Currency.objects.all()
@@ -249,8 +244,7 @@ class Command(BaseCommand):
         """
         self.stdout.write(
             f"\n\n\n\n## test_currencies_exchange_pks_mirror_currency_exchanges - started ##\n")
-        # TODO: The code below has to be rewritten to do what
-        # the description of this method says.
+
         passed_currencies = []
         failed_currencies = []
         for currency_instance in currency_instances:
@@ -259,16 +253,10 @@ class Command(BaseCommand):
             crncy_exchng_pks_exchng_names = self.return_crncy_exchng_pks_exchng_names(
                 currency_instance)
             if crncy_exchng_names == crncy_exchng_pks_exchng_names:
-                # Currency passed test
-                # display that the currency has passed
                 passed_currencies.append(currency_instance)
             else:
-                # Currency failed test
-                # show that there is an error, and display
-                # both, so that I can see where they differ.
                 failed_currencies.append(currency_instance)
 
-        # TODO: Gater and print all FAILED currencies
         self.display_exchange_pks_mirror_currency_exchanges_results(
             failed_currencies, passed_currencies)
 
@@ -308,3 +296,53 @@ class Command(BaseCommand):
                 self.stdout.write(f"- {instance.name}")
         else:
             self.stdout.write(f"- No currencies failed")
+
+    def test_ticker_symbols(self):
+        """
+        Will test if currencies have ticker symbols.
+
+        Will test some specific currencies, because I know in
+        advance that some Kraken supported currencies should
+        at leat have two symbols. Since Kraken has some of
+        their own ticker symbols.
+        """
+        self.stdout.write(f"\n\n\n\n## Test Ticker Symbols ##\n")
+
+        symbols_to_test = ['XBT', 'BTC', 'XDG', 'DOGE', 'FEE', 'YOYO', 'BQX']
+        self.stdout.write(f"\n### Tested symbols: ###\n")
+        self.stdout.write(f"{symbols_to_test}")
+
+        existing_symbols = []
+        non_existing_symbols = []
+        for symbol in symbols_to_test:
+            symbol_instance = None
+            try:
+                symbol_instance = TickerSymbol.objects.get(symbol=symbol)
+            except TickerSymbol.DoesNotExist:
+                pass
+
+            if symbol_instance:
+                existing_symbols.append(symbol)
+            else:
+                non_existing_symbols.append(symbol)
+
+        self.display_test_ticker_symbols_results(
+            existing_symbols, non_existing_symbols)
+
+    def display_test_ticker_symbols_results(self, existing_symbols, non_existing_symbols):
+        self.stdout.write(f"\n### Results: ###\n")
+
+        if non_existing_symbols:
+            self.stdout.write(f"\n### Test Failed ###\n")
+            self.stdout.write(
+                f"\n### The following symbols are not in the database: ###\n")
+            for symbol in non_existing_symbols:
+                self.stdout.write(f"- {symbol}")
+        else:
+            self.stdout.write(f"\n### Test Passed ###\n")
+            self.stdout.write(
+                f"\n### All tested symbols are in the database ###\n")
+
+        self.stdout.write(f"\n### Symbols in database: ###\n")
+        for symbol in existing_symbols:
+            self.stdout.write(f"- {symbol}")
