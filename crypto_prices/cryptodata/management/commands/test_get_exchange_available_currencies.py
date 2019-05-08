@@ -114,16 +114,21 @@ class Command(BaseCommand):
         self.test_min_five_currencies_for_each_exchange()
 
         # get 10 currencies that have a related exchange
-        instances_amount = 10
+        instances_amount = 15 + (len(settings.EXCHANGES) * 3)
         currency_instances = self.get_currencies_with_exchange(
             instances_amount)
-        # Test if each Currency has a CurrencyExchangePK
-        self.test_currencies_have_exchange_pk(currency_instances)
-        # And test if CurrencyExchangePK.exchange refers to this exchange
+        # Test if each Currency has a CurrencyExchangePK for each
+        # exchange in currency.exchanges
+        self.test_currencies_exchange_pks_mirror_currency_exchanges(
+            currency_instances)
 
         # Test if this Currency has a TickerSymbol
 
     def test_min_five_currencies_for_each_exchange(self):
+        """
+        Tests if there are a minimum of five currencies
+        for each exchange.
+        """
         self.stdout.write(
             f"\n### Test if min five currencies for each exchange - started ###\n")
 
@@ -222,18 +227,84 @@ class Command(BaseCommand):
                 if len(filtered_currency_instances) == amount:
                     return filtered_currency_instances
 
-    def test_currencies_have_exchange_pk(self, currency_instances):
+    def test_currencies_exchange_pks_mirror_currency_exchanges(self, currency_instances):
         """
-        Returns True if all currency instances have a minimum of
-        one related CurrencyExchangePK, else it returns False.
-        """
-        self.stdout.write(f"\n## Test Currencies have CurrencyExchangePK ##\n")
-        for currency_instance in currency_instances:
-            currency_exchange_pk_set = currency_instance.currencyexchangepk_set.all()
-            currency_has_exchange_pk = bool(currency_exchange_pk_set)
-            self.stdout.write(
-                f"- currency: {currency_instance.name} has exchange pk: {currency_has_exchange_pk}")
-            if not currency_has_exchange_pk:
-                return False
+        This method will test all given currency instances for 
+        the following:
 
-        return True
+        If the Currency instance's CurrencyExchangePKs match
+        the Currency's exchanges in a symmetrical way.
+
+        Example to bring more clarity:
+
+        If a Currency instance has the following related
+        (ManyToMany) exchanges: 'Binance' and 'Kraken', then
+        it should also have related CurrencyExchangePKs for
+        both 'Binance' and 'Kraken'.
+
+        But more specifically it should ONLY have
+        CurrencyExchangePKs for 'Binance' and 'Kraken', no more
+        and no less. Since those are the only two (ManyToMany)
+        related exchanges of the Currency instance.
+        """
+        self.stdout.write(
+            f"\n\n\n\n## test_currencies_exchange_pks_mirror_currency_exchanges - started ##\n")
+        # TODO: The code below has to be rewritten to do what
+        # the description of this method says.
+        passed_currencies = []
+        failed_currencies = []
+        for currency_instance in currency_instances:
+            crncy_exchng_names = self.return_crncy_exchng_names(
+                currency_instance)
+            crncy_exchng_pks_exchng_names = self.return_crncy_exchng_pks_exchng_names(
+                currency_instance)
+            if crncy_exchng_names == crncy_exchng_pks_exchng_names:
+                # Currency passed test
+                # display that the currency has passed
+                passed_currencies.append(currency_instance)
+            else:
+                # Currency failed test
+                # show that there is an error, and display
+                # both, so that I can see where they differ.
+                failed_currencies.append(currency_instance)
+
+        # TODO: Gater and print all FAILED currencies
+        self.display_exchange_pks_mirror_currency_exchanges_results(
+            failed_currencies, passed_currencies)
+
+    def return_crncy_exchng_names(self, currency_instance):
+        """
+        Takes currency instance, returns list of names
+        of the currency_instance.exchanges.
+        """
+        name_set = {exch.name for exch in currency_instance.exchanges.all()}
+        return name_set
+
+    def return_crncy_exchng_pks_exchng_names(self, currency_instance):
+        """
+        Takes currency instance, returns list of names
+        of exchanges of each related CurrencyExchangePK.exchange.
+        """
+        exchange_pks = currency_instance.currencyexchangepk_set.all()
+        name_set = set()
+        for exchange_pk in exchange_pks:
+            name_set.add(exchange_pk.exchange.name)
+
+        return name_set
+
+    def display_exchange_pks_mirror_currency_exchanges_results(self, failed_currencies, passed_currencies):
+        self.stdout.write(f"\n### Results: ###\n")
+
+        self.stdout.write(f"\n### Passed: ###\n")
+        if len(passed_currencies) > 0:
+            for instance in passed_currencies:
+                self.stdout.write(f"- {instance.name}")
+        else:
+            self.stdout.write(f"- No currencies passed")
+
+        self.stdout.write(f"\n### Failed: ###\n")
+        if len(failed_currencies) > 0:
+            for instance in failed_currencies:
+                self.stdout.write(f"- {instance.name}")
+        else:
+            self.stdout.write(f"- No currencies failed")
