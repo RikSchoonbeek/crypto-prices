@@ -9,6 +9,8 @@ from django.core.management.base import BaseCommand
 
 from cryptodata.models import Currency, CurrencyExchangePK, Exchange, TickerSymbol
 
+from ._utils import determine_str_or_int
+
 
 class Command(BaseCommand):
     help = """
@@ -146,12 +148,12 @@ class Command(BaseCommand):
     def return_available_currency_data(self, exchange_name):
         url = self.get_exchange_url(exchange_name)
         response = requests.get(url)
-        data = json.loads(response.text)
+        parsed_response = json.loads(response.text)
 
         if exchange_name == 'Binance':
-            currency_data = data['symbols']
+            currency_data = parsed_response['symbols']
         elif exchange_name == 'Bittrex' or 'Kraken':
-            currency_data = data['result']
+            currency_data = parsed_response['result']
 
         return currency_data
 
@@ -262,16 +264,8 @@ class Command(BaseCommand):
             new_instance.currency = currency_instance
             new_instance.exchange = exchange_instance
             new_instance.key = key
-            new_instance.key_type = self.determine_str_or_int(key).upper()
+            new_instance.key_type = determine_str_or_int(key).upper()
             new_instance.save()
-
-    def determine_str_or_int(self, variable):
-        if type(variable) is str:
-            return 'str'
-        elif type(variable) is int:
-            return 'int'
-        else:
-            return None
 
     def add_update_exchange_model(self, exchange_name):
         """
