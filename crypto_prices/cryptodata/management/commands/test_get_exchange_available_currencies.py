@@ -1,4 +1,3 @@
-import random
 from unittest import TestCase
 
 from django.conf import settings
@@ -6,6 +5,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from cryptodata.models import Currency, CurrencyExchangePK, Exchange, TickerSymbol
+
+from ._utils import return_randomized_indexes_for_model
 
 
 class Command(BaseCommand):
@@ -36,7 +37,11 @@ class Command(BaseCommand):
 
     def empty_tables(self):
         """
-        Empty all the cryptodata.models tables
+        Empty the following tables:
+        - Currency
+        - CurrencyExchangePK
+        - Exchange
+        - TickerSymbol
         """
         self.stdout.write(f"\n## Emptying tables - started ##")
         CurrencyExchangePK.objects.all().delete()
@@ -111,7 +116,8 @@ class Command(BaseCommand):
         # Untill a minimum of 5 currencies are found,
         # for each exchange, which have that exchange in
         # Currency.exchanges
-        self.test_min_five_currencies_for_each_exchange()
+        min_amount = 5
+        self.test_min_amount_currencies_for_each_exchange(min_amount)
 
         # get 10 currencies that have a related exchange
         instances_amount = 15 + (len(settings.EXCHANGES) * 3)
@@ -125,57 +131,50 @@ class Command(BaseCommand):
         # Test if this Currency has a TickerSymbol
         self.test_ticker_symbols()
 
-    def test_min_five_currencies_for_each_exchange(self):
+    def test_min_amount_currencies_for_each_exchange(self, min_amount):
         """
-        Tests if there are a minimum of five currencies
+        Tests if there are a minimum of min_amount currencies
         for each exchange.
         """
         self.stdout.write(
-            f"\n### Test if min five currencies for each exchange - started ###\n")
+            f"\n### Test if min min_amount currencies for each exchange - started ###\n")
 
         currency_instances = Currency.objects.all()
 
         exchange_currency_count_dict = self.create_exchange_currency_count_dict()
-        randomized_indexes = self.return_randomized_indexes()
+        randomized_indexes = return_randomized_indexes_for_model(Currency)
 
         for index in randomized_indexes:
             currency_instance = currency_instances[index]
             exchange_currency_count_dict = self.update_exchange_count(
-                currency_instance, exchange_currency_count_dict)
+                currency_instance, exchange_currency_count_dict, min_amount)
 
-            if self.check_all_exchanges_hit_five(exchange_currency_count_dict):
+            if self.check_all_exchanges_hit_min_amount(exchange_currency_count_dict):
                 break
 
-        self.display_min_five_test_results(exchange_currency_count_dict)
-
-    def return_randomized_indexes(self):
-        currency_instances = Currency.objects.all()
-        currency_instances_count = currency_instances.count()
-
-        random_indexes = random.sample(
-            range(currency_instances_count-1), currency_instances_count-1)
-
-        return random_indexes
+        self.display_min_min_amount_test_results(exchange_currency_count_dict)
 
     def create_exchange_currency_count_dict(self):
         count_dict = {}
         for exchange_name in settings.EXCHANGES:
             count_dict[exchange_name] = {
                 'count': 0,
-                'has_hit_five': False,
+                'has_hit_min_amount': False,
             }
 
         return count_dict
 
-    def update_exchange_count(self, currency_instance, exchange_currency_count_dict):
+    def update_exchange_count(self, currency_instance, exchange_currency_count_dict, min_amount):
         """
-        Takes a currency, and the exchange_currency_count_dict.
+        Takes a currency, the exchange_currency_count_dict, and a
+        minimum amount of currencys that needs to be found for
+        each exchange.
 
         Adds +1 to count of each exchange that is in the currency's
         exchanges (ManyToManyField).
 
-        Also tests if the exchange has hit five. If so, the exchange's
-        'has_hit_five' is set to True.
+        Also tests if the exchange has hit min_amount. If so, the exchange's
+        'has_hit_min_amount' is set to True.
         """
         exchange_set = currency_instance.exchanges.all()
         for exchange_instance in exchange_set:
@@ -185,31 +184,31 @@ class Command(BaseCommand):
                 new_count = current_count + 1
                 exchange_currency_count_dict[exchange_name]['count'] = new_count
 
-                if new_count == 5:
-                    exchange_currency_count_dict[exchange_name]['has_hit_five'] = True
+                if new_count == min_amount:
+                    exchange_currency_count_dict[exchange_name]['has_hit_min_amount'] = True
 
         return exchange_currency_count_dict
 
-    def check_all_exchanges_hit_five(self, exchange_currency_count_dict):
+    def check_all_exchanges_hit_min_amount(self, exchange_currency_count_dict):
         """
-        Returns False if any of the exchanges hasn't hit five yet,
+        Returns False if any of the exchanges hasn't hit min_amount yet,
         else returns True.
         """
         for exchange_name in exchange_currency_count_dict:
-            if not exchange_currency_count_dict[exchange_name]['has_hit_five']:
+            if not exchange_currency_count_dict[exchange_name]['has_hit_min_amount']:
                 return False
 
         return True
 
-    def display_min_five_test_results(self, exchange_currency_count_dict):
+    def display_min_min_amount_test_results(self, exchange_currency_count_dict):
         self.stdout.write(f"\n### Results: ###\n")
         for exchange_name in exchange_currency_count_dict:
-            has_hit_five = exchange_currency_count_dict[exchange_name]['has_hit_five']
+            has_hit_min_amount = exchange_currency_count_dict[exchange_name]['has_hit_min_amount']
             self.stdout.write(
-                f"- {exchange_name}: has_hit_five: {has_hit_five}")
+                f"- {exchange_name}: has_hit_min_amount: {has_hit_min_amount}")
 
     def get_currencies_with_exchange(self, amount):
-        randomized_indexes = self.return_randomized_indexes()
+        randomized_indexes = return_randomized_indexes_for_model(Currency)
         currency_instances = Currency.objects.all()
 
         filtered_currency_instances = []
