@@ -22,6 +22,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
 
         for exchange_name in settings.EXCHANGES:
+            exchange_instance = Exchange.objects.get(name=exchange_name)
             # Fetch raw trading pairs data of current exchange
             all_pair_raw_data = self.return_api_pair_data(exchange_name)
             # Loop over each pair (raw data)
@@ -86,9 +87,9 @@ class Command(BaseCommand):
         currency1_exchange_pk = raw_data['baseAsset']
         currency2_exchange_pk = raw_data['quoteAsset']
         currency1_instance = return_currency_instance_from_exchange_pk(
-            currency1_exchange_pk)
+            currency1_exchange_pk, exchange_instance)
         currency2_instance = return_currency_instance_from_exchange_pk(
-            currency2_exchange_pk)
+            currency2_exchange_pk, exchange_instance)
         exchange_pk = raw_data['symbol']
 
         formatted_data = {
@@ -103,9 +104,9 @@ class Command(BaseCommand):
         currency1_exchange_pk = raw_data['MarketCurrency']
         currency2_exchange_pk = raw_data['BaseCurrency']
         currency1_instance = return_currency_instance_from_exchange_pk(
-            currency1_exchange_pk)
+            currency1_exchange_pk, exchange_instance)
         currency2_instance = return_currency_instance_from_exchange_pk(
-            currency2_exchange_pk)
+            currency2_exchange_pk, exchange_instance)
         exchange_pk = raw_data['MarketName']
 
         formatted_data = {
@@ -120,9 +121,9 @@ class Command(BaseCommand):
         currency1_exchange_pk = all_pair_raw_data[pair_key]['base']
         currency2_exchange_pk = all_pair_raw_data[pair_key]['quote']
         currency1_instance = return_currency_instance_from_exchange_pk(
-            currency1_exchange_pk)
+            currency1_exchange_pk, exchange_instance)
         currency2_instance = return_currency_instance_from_exchange_pk(
-            currency2_exchange_pk)
+            currency2_exchange_pk, exchange_instance)
         exchange_pk = pair_key
         formatted_data = {
             'currency1_instance': currency1_instance,
