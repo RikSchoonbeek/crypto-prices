@@ -68,7 +68,7 @@ class TradingPairExchangePK(models.Model):
         max_length=3, choices=KEY_TYPE_CHOICES, default='STR')
 
     def __str__(self):
-        return self.key
+        return self.key + " - " + self.exchange.name
 
     class Meta:
         ordering = ['key']
