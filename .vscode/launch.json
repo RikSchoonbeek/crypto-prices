@@ -17,7 +17,7 @@
       "type": "python",
       "request": "launch",
       "program": "${workspaceFolder}/crypto_prices/manage.py",
-      "args": ["get_exchange_data"],
+      "args": ["test_get_exchange_available_currencies"],
       "django": true
     }
   ]
