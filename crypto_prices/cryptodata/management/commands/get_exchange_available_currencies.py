@@ -68,11 +68,6 @@ class Command(BaseCommand):
                 self.add_currency(all_currencies_data,
                                   currency_data, exchange_instance, exchange_name)
 
-    def split_binance_currency_data(self, currency_data):
-        """
-
-        """
-
     def add_currency(self, all_currencies_data, currency_data, exchange_instance, exchange_name):
         if exchange_name == 'Binance':
             formatted_crrncy_data = currency_data
@@ -258,8 +253,9 @@ class Command(BaseCommand):
         return currency_instance
 
     def add_update_currency_exchange_pk_to_db(self, currency_instance, exchange_instance, key):
+        # Should filter on key + related exchange combo
         currency_exchange_pk_instance_queryset = CurrencyExchangePK.objects.filter(
-            key=key)
+            key=key).filter(exchange__exact=exchange_instance)
 
         if not currency_exchange_pk_instance_queryset.exists():
             new_instance = CurrencyExchangePK()
