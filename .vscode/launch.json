@@ -13,7 +13,15 @@
       "django": true
     },
     {
-      "name": "Python: Django cus man comm",
+      "name": "test_save_available_trading_pairs",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/crypto_prices/manage.py",
+      "args": ["test_save_available_trading_pairs"],
+      "django": true
+    },
+    {
+      "name": "test_get_exchange_available_currencies",
       "type": "python",
       "request": "launch",
       "program": "${workspaceFolder}/crypto_prices/manage.py",
