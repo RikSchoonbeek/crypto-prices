@@ -29,6 +29,7 @@ class CurrencyExchangePK(models.Model):
 
     class Meta:
         ordering = ['key']
+        unique_together = [['exchange', 'key']]
 
 
 class TickerSymbol(models.Model):
@@ -40,6 +41,7 @@ class TickerSymbol(models.Model):
 
     class Meta:
         ordering = ['symbol']
+        unique_together = [['currency', 'symbol']]
 
 
 class TradingPair(models.Model):
