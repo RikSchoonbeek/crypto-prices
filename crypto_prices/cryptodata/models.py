@@ -33,7 +33,7 @@ class CurrencyExchangePK(models.Model):
 
 
 class TickerSymbol(models.Model):
-    symbol = models.CharField(max_length=8, unique=True)
+    symbol = models.CharField(max_length=8)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -41,6 +41,7 @@ class TickerSymbol(models.Model):
 
     class Meta:
         ordering = ['symbol']
+        unique_together = [['symbol', 'currency']]
 
 
 class TradingPair(models.Model):
