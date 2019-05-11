@@ -3,22 +3,6 @@ import random
 from cryptodata.models import CurrencyExchangePK
 
 
-def determine_str_or_int(variable):
-    """
-    Determines if variable is str, int type or neither.
-
-    Returns 'str' if str
-    Returns 'int' if int
-    Returns None if neither
-    """
-    if type(variable) is str:
-        return 'str'
-    elif type(variable) is int:
-        return 'int'
-    else:
-        return None
-
-
 def return_currency_instance_from_exchange_pk(exchange_pk, exchange_instance):
     """
     Takes the pk (key) of an exchange for a currency,
