@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Currency, CurrencyExchangePK, Exchange, TickerSymbol
+from .models import Currency, CurrencyExchangePK, Exchange
 
 
 @admin.register(Currency)
@@ -15,9 +15,4 @@ class CurrencyExchangePKAdmin(admin.ModelAdmin):
 
 @admin.register(Exchange)
 class ExchangeAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(TickerSymbol)
-class TickerSymbolAdmin(admin.ModelAdmin):
     pass

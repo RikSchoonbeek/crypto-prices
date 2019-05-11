@@ -3,6 +3,7 @@ from django.db import models
 
 class Currency(models.Model):
     name = models.CharField(max_length=255, unique='True')
+    ticker_symbol = models.CharField(max_length=8)
     exchanges = models.ManyToManyField('Exchange')
 
     def __str__(self):
@@ -32,16 +33,16 @@ class CurrencyExchangePK(models.Model):
         unique_together = [['exchange', 'key']]
 
 
-class TickerSymbol(models.Model):
-    symbol = models.CharField(max_length=8)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
+# class TickerSymbol(models.Model):
+#     symbol = models.CharField(max_length=8)
+#     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
 
-    def __str__(self):
-        return self.symbol
+#     def __str__(self):
+#         return self.symbol
 
-    class Meta:
-        ordering = ['symbol']
-        unique_together = [['symbol', 'currency']]
+#     class Meta:
+#         ordering = ['symbol']
+#         unique_together = [['symbol', 'currency']]
 
 
 class TradingPair(models.Model):
