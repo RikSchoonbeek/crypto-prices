@@ -3,39 +3,25 @@ import requests
 
 from django.conf import settings
 
-from cryptodata.models import Currency, Exchange, TickerSymbol
-
-
-def check_currency_exists(currency_data):
-    """
-    Checks if currency exist by checking if it's ticker symbol exists.
-
-    If ticker symbol doesn't exist, this means that the currency
-    also doesnt, and vice versa.
-    """
-    ticker_symbol_instance = None
-    ticker_symbol = currency_data['asset_id']
-    try:
-        ticker_symbol_instance = TickerSymbol.objects.get(symbol=ticker_symbol)
-    except TickerSymbol.DoesNotExist:
-        pass
-
-    currency_exists = bool(ticker_symbol_instance)
-    return currency_exists
+from cryptodata.models import Currency, Exchange
 
 
 def create_currency(currency_data):
-    instance = Currency()
-    instance.name = currency_data['name']
-    instance.save()
-    return instance
+    currency_name = currency_data['name']
+    ticker_symbol = currency_data['asset_id']
+    instance = None
+    try:
+        instance = Currency.objects.get(
+            name=currency_name, ticker_symbol=ticker_symbol)
+    except Currency.DoesNotExist:
+        pass
 
+    if not instance:
+        instance = Currency()
+        instance.name = currency_name
+        instance.ticker_symbol = ticker_symbol
+        instance.save()
 
-def create_ticker_symbol(currency_data, currency_instance):
-    instance = TickerSymbol()
-    instance.symbol = currency_data['asset_id']
-    instance.currency = currency_instance
-    instance.save()
     return instance
 
 

@@ -1,61 +1,68 @@
 from django.test import TestCase
 
-from cryptodata.management.commands.utils.save_coinapi_assets_utils import check_currency_exists, create_currency, create_ticker_symbol
-from cryptodata.models import Currency, TickerSymbol
+from cryptodata.management.commands.utils.save_coinapi_assets_utils import create_currency
+from cryptodata.models import Currency
 
 
 class SaveCoinAPIAssetsToDBTestCase(TestCase):
     def setUp(self):
-        self.currency_data = {
-            "asset_id": "BTC",
-            "name": "Bitcoin",
+        self.existing_currency_data = {
+            "asset_id": "XSC",
+            "name": "Existing coin",
         }
-        self.currency_instance = create_currency(self.currency_data)
-        create_ticker_symbol(self.currency_data, self.currency_instance)
+        self.existing_currency_instance = create_currency(
+            self.existing_currency_data)
 
-    def test_check_currency_exists(self):
-        existing_currency_data = self.currency_data
-
-        non_existing_currency_data = {
-            "asset_id": "AAA",
-            "name": "None Existing Coin Name",
+        self.none_existing_currency_data = {
+            "asset_id": "NXC",
+            "name": "None existing coin",
         }
-
-        existing_currency_exists = check_currency_exists(
-            existing_currency_data)
-        non_existing_currency_exists = check_currency_exists(
-            non_existing_currency_data)
-
-        self.assertTrue(existing_currency_exists)
-        self.assertFalse(non_existing_currency_exists)
 
     def test_create_currency(self):
         """
         Tests the create_currency function.
 
-        This means that it checks if this function actually adds a
-        new Currency instance to the database.
+        Checks if this function actually adds a new 
+        Currency instance to the database if one with
+        the given data doesn't exist.
+
+        Also tests if a previously existing instance is
+        detected (returned by the function).
         """
-        currency_name = self.currency_data['name']
-        db_instance = None
+        # Checks if this function actually adds a new
+        # Currency instance to the database if one with
+        # the given data doesn't exist.
+        create_currency(self.none_existing_currency_data)
+
+        non_existing_currency_name = self.none_existing_currency_data['name']
+        non_existing_currency_symbol = self.none_existing_currency_data['asset_id']
+        non_existing_currency_instance = None
         try:
-            db_instance = Currency.objects.get(name=currency_name)
+            non_existing_currency_instance = Currency.objects.get(
+                name=non_existing_currency_name,
+                ticker_symbol=non_existing_currency_symbol)
         except Currency.DoesNotExist:
             pass
 
-        self.assertIsNotNone(db_instance)
-        self.assertEqual(db_instance.name, currency_name)
+        self.assertTrue(isinstance(non_existing_currency_instance, Currency))
+        self.assertEqual(non_existing_currency_name,
+                         non_existing_currency_instance.name)
+        self.assertEqual(non_existing_currency_symbol,
+                         non_existing_currency_instance.ticker_symbol)
 
-    def test_create_ticker_symbol(self):
-
-        symbol = self.currency_data['asset_id']
-        db_instance = None
+        # Also tests if a previously existing instance is
+        # detected (returned by the function).
+        existing_currency_name = self.existing_currency_data['name']
+        existing_currency_symbol = self.existing_currency_data['asset_id']
+        existing_currency_instance_id = self.existing_currency_instance.id
+        returned_currency_instance = None
         try:
-            db_instance = TickerSymbol.objects.get(
-                currency=self.currency_instance, symbol=symbol)
-        except TickerSymbol.DoesNotExist:
+            returned_currency_instance = Currency.objects.get(
+                name=existing_currency_name,
+                ticker_symbol=existing_currency_symbol)
+        except Currency.DoesNotExist:
             pass
+        returned_currency_instance_id = returned_currency_instance.id
 
-        self.assertIsNotNone(db_instance)
-        self.assertEqual(db_instance.symbol, symbol)
-        self.assertEqual(db_instance.currency.id, self.currency_instance.id)
+        self.assertEqual(existing_currency_instance_id,
+                         returned_currency_instance_id)
