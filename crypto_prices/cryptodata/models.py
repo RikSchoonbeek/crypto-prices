@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Currency(models.Model):
-    name = models.CharField(max_length=255, unique='True')
+    name = models.CharField(max_length=255)
     ticker_symbol = models.CharField(max_length=8)
     exchanges = models.ManyToManyField('Exchange')
 
@@ -11,6 +11,7 @@ class Currency(models.Model):
 
     class Meta:
         ordering = ['name']
+        unique_together = ['name', 'ticker_symbol']
 
 
 class CurrencyExchangePK(models.Model):
